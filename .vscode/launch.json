@@ -7,7 +7,7 @@
         "functionName": "function-hello-world",
         "gen": "GEN_2",
         "entryPoint": "HelloGet",
-        "revision": "function-hello-world-00009-wub",
+        "revision": "function-hello-world-00026-vin",
         "testInput": "",
         "region": "us-central1",
         "runtime": "go119"

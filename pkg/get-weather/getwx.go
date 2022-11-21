@@ -9,61 +9,71 @@ import (
 	"strconv"
 
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
+	"go.opentelemetry.io/otel"
+	semconv "go.opentelemetry.io/otel/semconv/v1.4.0"
+	"go.opentelemetry.io/otel/trace"
 )
 
 type GeoResponse []struct {
-	Importance  float64  `json:"importance"`
-	Licence     string   `json:"licence"`
-	Class       string   `json:"class"`
-	OsmID       int      `json:"osm_id"`
-	DisplayName string   `json:"display_name"`
-	OsmType     string   `json:"osm_type"`
-	Lon         string   `json:"lon"`
-	PlaceID     int      `json:"place_id"`
-	Boundingbox []string `json:"boundingbox"`
-	Lat         string   `json:"lat"`
-	Type        string   `json:"type"`
+	// Items commented are what the API returns. Not used in this case but can be used later
+	// Importance  float64  `json:"importance"`
+	// Licence     string   `json:"licence"`
+	// Class       string   `json:"class"`
+	// OsmID       int      `json:"osm_id"`
+	// DisplayName string   `json:"display_name"`
+	// OsmType     string   `json:"osm_type"`
+	Lon string `json:"lon"`
+	// PlaceID     int      `json:"place_id"`
+	// Boundingbox []string `json:"boundingbox"`
+	Lat string `json:"lat"`
+	// Type        string   `json:"type"`
 }
 
 type WxResponse struct {
-	Region            string `json:"region"`
+	// Items commented are what the API returns. Not used in this case but can be used later
+
+	// Region            string `json:"region"`
 	CurrentConditions struct {
-		Dayhour string `json:"dayhour"`
-		Temp    struct {
+		// Dayhour string `json:"dayhour"`
+		Temp struct {
 			C int `json:"c"`
 			F int `json:"f"`
 		} `json:"temp"`
-		Precip   string `json:"precip"`
-		Humidity string `json:"humidity"`
-		Wind     struct {
-			Km   int `json:"km"`
-			Mile int `json:"mile"`
-		} `json:"wind"`
-		IconURL string `json:"iconURL"`
-		Comment string `json:"comment"`
+		// 	Precip   string `json:"precip"`
+		// 	Humidity string `json:"humidity"`
+		// 	Wind     struct {
+		// 		Km   int `json:"km"`
+		// 		Mile int `json:"mile"`
+		// 	} `json:"wind"`
+		// 	IconURL string `json:"iconURL"`
+		// 	Comment string `json:"comment"`
 	} `json:"currentConditions"`
-	NextDays []struct {
-		Day     string `json:"day"`
-		Comment string `json:"comment"`
-		MaxTemp struct {
-			C int `json:"c"`
-			F int `json:"f"`
-		} `json:"max_temp"`
-		MinTemp struct {
-			C int `json:"c"`
-			F int `json:"f"`
-		} `json:"min_temp"`
-		IconURL string `json:"iconURL"`
-	} `json:"next_days"`
-	ContactAuthor struct {
-		Email    string `json:"email"`
-		AuthNote string `json:"auth_note"`
-	} `json:"contact_author"`
-	DataSource string `json:"data_source"`
+	// NextDays []struct {
+	// 	Day     string `json:"day"`
+	// 	Comment string `json:"comment"`
+	// 	MaxTemp struct {
+	// 		C int `json:"c"`
+	// 		F int `json:"f"`
+	// 	} `json:"max_temp"`
+	// 	MinTemp struct {
+	// 		C int `json:"c"`
+	// 		F int `json:"f"`
+	// 	} `json:"min_temp"`
+	// 	IconURL string `json:"iconURL"`
+	// } `json:"next_days"`
+	// ContactAuthor struct {
+	// 	Email    string `json:"email"`
+	// 	AuthNote string `json:"auth_note"`
+	// } `json:"contact_author"`
+	// DataSource string `json:"data_source"`
 }
+
+var tr = otel.Tracer("getWeather")
 
 func MakeGeoRequest(ctx context.Context, city, state string) (lat, lon string) {
 	// create an instrumented HTTP client
+	ctx, span := tr.Start(ctx, "makeGeoRequest", trace.WithAttributes(semconv.PeerServiceKey.String("foward-reverse-geocoding")))
+	defer span.End()
 	client := http.Client{Transport: otelhttp.NewTransport(http.DefaultTransport)}
 	url := fmt.Sprintf("https://forward-reverse-geocoding.p.rapidapi.com/v1/forward?city=%s&state=%s&accept-language=en&polygon_threshold=0.0", city, state)
 	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
@@ -93,6 +103,8 @@ func MakeGeoRequest(ctx context.Context, city, state string) (lat, lon string) {
 
 func GetWeatherRequest(ctx context.Context, lat, long string) (temp string, err error) {
 	//opts := otelhttp.WithSpanNameFormatter(func(operation string, r *http.Request){return operation}("GetWeatherRequest"))
+	ctx, span := tr.Start(ctx, "getWeatherRequest", trace.WithAttributes(semconv.PeerServiceKey.String("weatherdb-api")))
+	defer span.End()
 	client := http.Client{Transport: otelhttp.NewTransport(http.DefaultTransport)}
 	url := fmt.Sprintf("https://weatherdbi.herokuapp.com/data/weather/%s,%s", lat, long)
 	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
